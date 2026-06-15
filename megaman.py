@@ -106,6 +106,7 @@ clock = pygame.time.Clock()
 pygame.font.init()
 # game_font = pygame.font.SysFont("Arial", 24)
 game_font = pygame.font.Font("./megaman-game-font.otf", 24)
+game_over = False
 
 #Custom event
 INVINCIBLE_END = pygame.USEREVENT + 0
@@ -292,6 +293,20 @@ def create_map():
             elif map_code == 12:
                 bladers.append(Blader(x, y))                
 
+def reset_game():
+    global player, metalls, metall_bullets, tiles, background_tiles,\
+    items, spikes, bladers, game_over
+    player = Player()
+    metalls = []
+    metall_bullets = [] #used to keep bullets active when metall is destroyed
+    tiles = []
+    background_tiles = []
+    items = []
+    spikes = [] #traps, hazards
+    bladers = []
+    create_map()
+    game_over = False
+
 def check_tile_collision(character):
     for tile in tiles:
         if character.colliderect(tile):
@@ -360,7 +375,7 @@ def move_map_x(velocity_x):
         blader.x += velocity_x
 
 def move():
-    global metalls, items, bladers, metall_bullets
+    global metalls, items, bladers, metall_bullets, game_over
     #x movement
     # if player.direction == "left" and player.velocity_x < 0:
     #     player.velocity_x += FRICTION
@@ -485,6 +500,9 @@ def move():
                 player.score += 1000
     items = [item for item in items if not item.used]
 
+    if player.health <= 0 or player.y > GAME_HEIGHT:
+        game_over = True
+
 def draw():
     window.fill((20, 18, 167))
     window.blit(background_image, (0, 80))
@@ -511,10 +529,9 @@ def draw():
         window.blit(bullet.image, bullet)
 
     for metall in metalls:
-        if metall.x > GAME_WIDTH:
-            break
-        metall.update_image()
-        window.blit(metall.image, metall)
+        if metall.x <= GAME_WIDTH:
+            metall.update_image()
+            window.blit(metall.image, metall)
         for bullet in metall.bullets:
             window.blit(bullet.image, bullet)
 
@@ -543,6 +560,12 @@ def draw():
     text_surface = game_font.render(text_score, False, "white")
     window.blit(text_surface, (GAME_WIDTH/2, TILE_SIZE/2))
 
+    if game_over:
+        text_surface = game_font.render("Game Over:", False, "white")
+        window.blit(text_surface, (GAME_WIDTH/8, GAME_HEIGHT/2))
+        text_surface = game_font.render("Press [Enter] to Restart", False, "white")
+        window.blit(text_surface, (GAME_WIDTH/8, GAME_HEIGHT/2 + TILE_SIZE))
+
 #start game
 player = Player()
 metalls = []
@@ -566,6 +589,9 @@ while True: #game loop
             player.shooting = False
 
     keys = pygame.key.get_pressed()
+    if (keys[pygame.K_RETURN] or keys[pygame.K_KP_ENTER]) and game_over:
+        reset_game()
+
     if (keys[pygame.K_UP] or keys[pygame.K_w]) and not player.jumping:
         player.velocity_y = PLAYER_VELOCITY_Y
         player.jumping = True
@@ -583,7 +609,8 @@ while True: #game loop
     if keys[pygame.K_x] or keys[pygame.K_SPACE]:
         player.set_shooting()
 
-    move()
-    draw()
-    pygame.display.update()
-    clock.tick(60) #60 frames per second (fps)
+    if not game_over:
+        move()
+        draw()
+        pygame.display.update()
+        clock.tick(60) #60 frames per second (fps)
